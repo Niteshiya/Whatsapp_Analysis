@@ -1,0 +1,148 @@
+---
+title: "The Chicken Group"
+author: "Nitesh"
+date: "07/10/2019"
+output:
+  word_document: default
+  pdf_document: default
+---
+Load Libraries
+```{r}
+#devtools::install_github("JBGruber/rwhatsapp")
+library(rwhatsapp)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(tidytext)
+library(tidyr)
+library(stopwords)
+```
+Importing files
+
+```{r}
+chat <- rwa_read("Chicken_data.txt")
+chat <- na.omit(chat)
+levels(chat$author) <- c("Nitesh","Dusty","Kshitij","Kshitij","Nitesh","Paresh","Rajat","Tanwir")
+head(chat)
+```
+
+**Lets first check the number of chit-chats in a day**
+
+```{r}
+chat %>%
+  mutate(day=date(time)) %>%
+  count(day) %>%
+  ggplot(aes(x=day,y=n))+geom_bar(stat="identity")+
+  ylab("Number of msgs")+xlab("time")+
+  ggtitle("Msgs per day")
+
+```
+
+**umm chats have reached till 600 lets first see who is responsible of these talks ..also after 07/2018 we talked less until the placement season XD.**
+
+**If you can find more information you are welcome **
+
+Lets see total texts by person
+
+```{r}
+chat %>%
+  mutate(day=date(time)) %>%
+  count(author) %>%
+  ggplot(aes(x=reorder(author,n),y=n,fill=rainbow(6)))+
+  geom_bar(stat="identity",col="black")+
+  ylab("No of msges")+xlab("Person")+
+  coord_flip() + ggtitle("Msg per Person") + theme(legend.position = "none")+
+  geom_text(aes(label = scales::comma(n)),hjust=2)
+```
+
+**Now we know who talks more** 
+**Now its time to watch poeple fav emoji**
+```{r}
+chat %>%
+  unnest(emoji) %>%
+  count(author,emoji,sort=T) %>%
+  group_by(author)%>%
+  top_n(n=6,n)%>%
+  ggplot(aes(x=reorder(emoji,n),y=n,fill=author))+
+  geom_col(show.legend = F,col="black")+
+  ylab("")+xlab("")+coord_flip()+
+  facet_wrap(~author,ncol=2,scales="free_y")+
+  ggtitle("Most emoji used")
+
+```
+
+**You can judge personalities here .....**
+**only i kiss here looks like I M GAY**
+**Okay lets look at favorate words to determine**
+
+```{r}
+chat %>%
+  unnest_tokens(input=text,output=word) %>%
+    count(author,word,sort=T)%>%
+  filter(nchar(word)>5) %>%
+  group_by(author) %>%
+  top_n(n=6,n) %>%
+  ggplot(aes(x=reorder(word,n),y=n,fill=author))+
+  geom_col(show.legend = F)+
+  ylab("")+xlab("")+ggtitle("fav words")+
+  coord_flip()+facet_wrap(~author,ncol=2,scales="free_y")
+
+```
+
+**Now i have a list of poeple who call each other .Also we share a lot of confidential documents**
+Me dushyant and tanwir are good with youtube <3
+rajat has "chutiya" in his vocab god bless
+Dushyant Likes tanwir;it has high frequency
+
+**Getting owrds that are diffrent for each other will be of more value**
+```{r}
+to_remove <- c(stopwords("english"),"omitted","message","delete","media","nahi")
+chat %>%
+  unnest_tokens(input=text,output=word)%>%
+  select(word,author) %>%
+  filter(nchar(word)>4) %>%
+  filter(!word %in% to_remove) %>%
+  mutate(word=gsub(".com","",word))%>%
+    count(author,word,sort=T) %>%
+  bind_tf_idf(term=word,document=author,n=n)%>%
+  filter(n>7)%>%
+  group_by(author)%>%
+  top_n(n=6,tf_idf)%>%
+  ggplot(aes(x=reorder(word,n),y=n,fill=author))+
+  geom_col(show.legend = F,col="black")+xlab("")+ylab("")+
+  coord_flip()+ggtitle("Important Words")+
+  facet_wrap(~author,ncol=2,scales="free_y")
+```
+
+**Tanwir and kshitj use less slangs**
+**Paresh is from delhi**
+**dushant is frequent with saala**
+**Nitesh is using ayega ya nahi ayega**
+
+**Now lets check who uses more unique words**
+```{r}
+chat %>%
+  unnest_tokens(input=text,output=word)%>%
+  filter(!word %in% to_remove) %>%
+  group_by(author)%>%
+  summarise(lex_diversity=n_distinct(word))%>%
+  arrange(desc(lex_diversity))%>%
+  ggplot(aes(x=reorder(author,lex_diversity),y=lex_diversity,fill=author)) + geom_col(show.legend = F,col="black")+
+           xlab("")+ylab("Unique_words")+
+  scale_y_continuous(expand=(multi = c(0,0,0,500)))+
+  coord_flip()+ggtitle("Lex-Diversity")+
+  geom_text(aes(label = scales::comma(lex_diversity)), hjust = -0.1)
+           
+```
+
+**Paresh was low on total word than kshitij,but he has vocab**
+**Also my total count and vocab was good ,respect me bitches**
+
+**Any more suggestion of insights are welcome if you can find them**
+
+
+**I dont work for free**
+
+
+
+
